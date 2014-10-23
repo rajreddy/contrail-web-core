@@ -3,6 +3,7 @@
  */
 var logutils = require('../utils/log.utils');
 var commonUtils = require('../utils/common.utils');
+var global = require('./global');
 
 function formatAndClause (objArr)
 {
@@ -351,6 +352,16 @@ function buildUnderlayQuery (uiQData, selectFileds)
     queryJSON['where'] = whereClause;
     if (null != selectFileds) {
         queryJSON['select_fields'].concat(selectFileds);
+    }
+    queryJSON['dir'] = global.TRAFFIC_DIR_INGRESS;
+    if (null != uiQData['direction']) {
+        if ('ingress' == uiQData['direction']) {
+            queryJSON['dir'] = global.TRAFFIC_DIR_INGRESS;
+        } else if ('egress' == uiQData['direction']) {
+            queryJSON['dir'] = global.TRAFFIC_DIR_EGRESS;
+        } else {
+            queryJSON['dir'] = uiQData['direction'];
+        }
     }
     return queryJSON;
 }
