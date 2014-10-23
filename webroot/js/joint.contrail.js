@@ -1746,10 +1746,12 @@ joint.shapes.contrail.Link = function (options) {
             linkConfig['attrs']['.connection']['stroke-width'] = 1;
             linkConfig['attrs']['.connection']['stroke-dasharray'] = '4 4';
         }
-    } else if(options['linkType'] == 'physical') {
-            linkConfig['attrs']['.connection']['stroke'] = connectionStroke != null ? connectionStroke : '#e80015';
-            linkConfig['attrs']['.connection']['stroke-width'] = 2;
-    } else if(options['linkType'] == 'logical') {
+    } else if(options['linkType'] == 'pr-pr' || options['linkType'] == 'vr-vr' ||
+        options['linkType'] == 'pr-vr' || options['linkType'] == 'vr-pr' ||
+        options['linkType'] == 'vr-vm' || options['linkType'] == 'vm-vr' ||
+        options['linkType'] == 'vr-vn' || options['linkType'] == 'vn-vr' ||
+        options['linkType'] == 'vm-vm' || options['linkType'] == 'vn-vn' ||
+        options['linkType'] == 'vm-vn' || options['linkType'] == 'vn-vm') {
             linkConfig['attrs']['.connection']['stroke'] = connectionStroke != null ? connectionStroke : '#e80015';
             linkConfig['attrs']['.connection']['stroke-width'] = 2;
     } else {
