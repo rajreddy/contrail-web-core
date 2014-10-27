@@ -600,7 +600,7 @@ function showUnderlayPaths(data) {
                     type    : "POST",
                     data    : {data: params},
                     callback : function(response) {
-                        underlayRenderer.getView().highlightPath(response);
+                        underlayRenderer.getView().highlightPath(response, {data: params});
                     }
                 };
                 underlayRenderer.getController().getModelData(cfg);
