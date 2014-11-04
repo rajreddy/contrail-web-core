@@ -4,7 +4,9 @@
 
 /* Set corePath before loading any other module */
 var corePath = process.cwd();
+var config = require('./src/serverroot/common/config.utils').compareAndMergeDefaultConfig();
 exports.corePath = corePath;
+exports.config = config;
 
 var express = require('express')
     , path = require('path')
@@ -30,7 +32,6 @@ var express = require('express')
     , jsonPath = require('JSONPath').eval
     ;
 
-var config = commonUtils.compareAndMergeDefaultConfig();
 var pkgList = commonUtils.mergeAllPackageList(global.service.MAINSEREVR);
 assert(pkgList);
 var nodeWorkerCount = config.node_worker_count;
@@ -154,13 +155,6 @@ function registerSessionDeleteEvent ()
     store.eventEmitter.on('sessionDeleted', function (sid) {
         /* Handle session delete cases here */
         console.log("Session got expired:", sid);
-        /* Delete authKey from Redis for this Session ID */
-        /* NOTE: sid is of format as: 
-           global.STR_REDIS_STORE_SESSION_ID_PREFIXsessionId, so extract sessionId
-           from here
-         */
-        var sessionId = getSessionIdByRedisSessionStore(sid);
-        authApi.deleteAuthDataBySessionId(sessionId);
     });
 }
 
@@ -518,3 +512,4 @@ startWebCluster();
 exports.myIdentity = myIdentity;
 exports.discServEnable = discServEnable;
 exports.pkgList = pkgList;
+

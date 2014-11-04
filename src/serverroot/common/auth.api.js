@@ -8,7 +8,7 @@
  * corresponding module is loaded via this file.
  */
 
-var config = require('../../../config/config.global'),
+var config = process.mainModule.exports['config'],
     crypto = require('crypto'),
     redis = require('redis'),
     logutils = require('../utils/log.utils'),
@@ -49,90 +49,6 @@ function createAuthKeyBySessionId (sessionId)
     return (global.STR_AUTH_KEY + global.ZWQ_MSG_SEPERATOR + sessionId);
 }
 
-function saveUserAuthInRedis (username, password, req, callback)
-{
-    var userCipher = null;
-    var passwdCipher = null
-    var userEncrypted = null;
-    var passwdEncrypted = null;
-
-    userCipher = crypto.createCipher(global.MD5_ALGO_AES256,
-                                     global.MD5_MY_KEY);
-    passwdCipher = crypto.createCipher(global.MD5_ALGO_AES256,
-                                       global.MD5_MY_KEY);
-    userEncrypted = userCipher.update(username, 'utf8', 'hex') +
-                                      userCipher.final('hex');
-    passwdEncrypted = passwdCipher.update(password, 'utf8', 'hex') +
-                                          passwdCipher.final('hex');
-    var redisStoreKey =
-        createAuthKeyBySessionId(req.session.id);
-    var userObj = createUserAuthObj(userEncrypted,
-                                                passwdEncrypted);
-    redisSub.redisPerClient.set(redisStoreKey, userObj, function(err) {
-        if (err) {
-            /* Redis Set Error */
-            logutils.logger.error("User auth store error " +
-                                  err);
-        } else {
-            logutils.logger.debug("User auth stored in redis " + 
-                                  req.session.id);
-        }
-        callback(err);
-    });
-}
-
-function getDecryptedUserBySessionId (sessionId, callback)
-{
-    var data;
-    var userDecipher, passwdDecipher, userDecrypted, passwdDecrypted;
-
-    var authKey = createAuthKeyBySessionId(sessionId);
-    redisSub.redisPerClient.get(authKey, function(err, data) {
-        if (err) {
-            logutils.logger.error("Redis get error for Session:" + sessionId +
-                                  " Got Redis error:" + err);
-            callback(err, null);
-            return;
-        }
-        if (null == data) {
-            logutils.logger.error("Did not get authObj for Session:" +
-                                  sessionId);
-            callback(err, null);
-            return;
-        }
-        /* We got the authObj */
-        data = JSON.parse(data);
-        /* Decrypt the userName and Password first */
-        userDecipher = crypto.createDecipher(global.MD5_ALGO_AES256,
-                                             global.MD5_MY_KEY);
-        passwdDecipher = crypto.createDecipher(global.MD5_ALGO_AES256,
-                                               global.MD5_MY_KEY);
-        userDecrypted = userDecipher.update(data['username'], 'hex', 'utf8') +
-                                            userDecipher.final('utf8');
-        passwdDecrypted = passwdDecipher.update(data['password'], 'hex', 'utf8') +
-                                                passwdDecipher.final('utf8');
-
-        callback(null, {username:userDecrypted, password:passwdDecrypted});
-   });
-}
-
-/* Function: deleteAuthDataBySessionId
-   This function is called when session expires.
-   It is used to delete the Auth entry from redis by session id 
- */
-function deleteAuthDataBySessionId (sessionId) {
-    var authKey = createAuthKeyBySessionId(sessionId);
-    redisSub.redisPerClient.del(authKey, function(err) {
-        if (err) {
-            logutils.logger.error("Redis DEL error [" + err + "] while " +
-                                  "deleting authKey: " + authKey);
-        } else {
-            logutils.logger.debug("Redis DEL successful while deleting " +
-                                  "authKey: " + authKey);
-        }
-    });
-}
-
 /** Function: authorize
   * 1. This function is wrapper API to authenticate the user using authentication
   *    credentials
@@ -141,8 +57,8 @@ function deleteAuthDataBySessionId (sessionId) {
   *              callback
   * 2. public function
   */
-function doAuthenticate (req, res, callback) {
-    authMethodApi.authenticate(req, res, function(err, data) {
+function doAuthenticate (req, res, appData, callback) {
+    authMethodApi.authenticate(req, res, appData, function(err, data) {
         callback(err, data);
     });
 }
@@ -175,8 +91,8 @@ function getDomainList (req, callback)
     });
 }
 
-function getTokenObjBySession (sessionId, tenantId, forceAuth, callback) {
-    authMethodApi.getTokenBySession(sessionId, tenantId, forceAuth,
+function getNewTokenObjByToken (authObj, callback) {
+    authMethodApi.getUserAuthDataByAuthObj(authObj,
                                        function(err, data) {
         callback(err, data);
     });
@@ -205,6 +121,11 @@ function isDefaultDomain (request, domain)
     return authMethodApi.isDefaultDomain(request, domain);
 }
 
+function getDefaultDomain (req)
+{
+    return authMethodApi.getDefaultDomain(req);
+}
+
 function getServiceCatalog (req, callback)
 {
     authMethodApi.getServiceCatalog(req, function(data) {
@@ -212,13 +133,19 @@ function getServiceCatalog (req, callback)
     });
 }
 
+function getUIRolesByExtRoles (extRoles)
+{
+    return authMethodApi.getUserRoleByAuthResponse(extRoles);
+}
+
+function getCookieObjs (req, appData, callback)
+{
+    return authMethodApi.getCookieObjs(req, appData, callback);
+}
+
 exports.doAuthenticate = doAuthenticate;
-exports.saveUserAuthInRedis = saveUserAuthInRedis;
 exports.getTenantList = getTenantList;
 exports.getTokenObj = getTokenObj;
-exports.getDecryptedUserBySessionId = getDecryptedUserBySessionId;
-exports.deleteAuthDataBySessionId = deleteAuthDataBySessionId;
-exports.getTokenObjBySession = getTokenObjBySession;
 exports.checkAndUpdateDefTenantToken = checkAndUpdateDefTenantToken;
 exports.getAPIServerAuthParams = getAPIServerAuthParams;
 exports.createAuthKeyBySessionId = createAuthKeyBySessionId;
@@ -227,4 +154,8 @@ exports.getServiceCatalog = getServiceCatalog;
 exports.getDomainList = getDomainList;
 exports.getProjectList = getProjectList;
 exports.isDefaultDomain = isDefaultDomain;
+exports.getNewTokenObjByToken = getNewTokenObjByToken;
+exports.getUIRolesByExtRoles = getUIRolesByExtRoles;
+exports.getDefaultDomain = getDefaultDomain;
+exports.getCookieObjs = getCookieObjs;
 

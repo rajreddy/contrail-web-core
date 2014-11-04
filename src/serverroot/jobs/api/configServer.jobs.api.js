@@ -3,7 +3,7 @@
  */
 
 var rest = require('../../common/rest.api'),
-    config = require('../../../../config/config.global.js'),
+    config = process.mainModule.exports.config,
     authApi = require('../../common/auth.api'),
     redisPub = require('../core/redisPub'),
     configServer;
@@ -21,35 +21,75 @@ function getHeaders(defHeaders, appHeaders)
     return headers;
 }
 
+function getDefProjectByJobData (jobData)
+{
+    var defProject = null;
+    try {
+        defProject = jobData['taskData']['cookies']['project'];
+        if (null == defProject) {
+            defProject = jobData['taskData']['authObj']['token']['tenant']['name'];
+        }
+    } catch(e) {
+        logutils.logger.error("In getDefProjectByJobData(): JSON Parse error:" +
+                              e);
+        return null;
+    }
+    return defProject;
+}
+
+function getAuthTokenByJobData (jobData)
+{
+    var project = getDefProjectByJobData(jobData);
+    try {
+        var tokenObjs = jobData['taskData']['tokenObjs'];
+        if ((null != tokenObjs) && (null != tokenObjs[project]) &&
+            (null != tokenObjs[project]['token']) &&
+            (null != tokenObjs[project]['token']['id'])) {
+            return tokenObjs[project]['token']['id'];
+        }
+    } catch(e) {
+        logutils.logger.error("In JOB getAuthTokenByJobData(): JSON Parse " +
+                              "error:" + e);
+    }
+    try {
+        return jobData['taskData']['authObj']['token']['id'];
+    } catch(e) {
+        logutils.logger.error("In JOB getAuthTokenByJobData(): JSON Parse " +
+                              "error:" + e);
+        return null;
+    }
+}
+
 function apiGet (reqUrl, jobData, callback, appHeaders, stopRetry)
 {
     var headers = {};
     var authObj;
     var defProject = null;
-    var sessionId = null;
+    var tokenId = null;
     try {
-        headers['X-Auth-Token'] =
-            jobData['taskData']['authObj']['token']['id'];
+        defProject = getDefProjectByJobData(jobData);
+        headers['X-Auth-Token'] = getAuthTokenByJobData(jobData);
+        headers['X_API_ROLE'] =
+            jobData['taskData']['userRoles'][defProject].join(',');
         headers = getHeaders(headers, appHeaders);
-        defProject = jobData['taskData']['authObj']['token']['tenant']['name'];
-        sessionId = jobData['taskData']['authObj']['sessionId']; 
     } catch(e) {
         /* We did not have authorized yet */
         headers['X-Auth-Token'] = null;
+        headers['X_API_ROLE'] = null;
         defProject = null;
-        sessionId = null;
     }
     configServer.api.get(reqUrl, function(err, data) {
         if (err) {
             if (stopRetry) {
                 callback(err, data);
             } else {
-                if ((null != defProject) && (null != sessionId) && 
+                if ((null != defProject) && (null != tokenId) &&
                     (err.responseCode ==
                      global.HTTP_STATUS_AUTHORIZATION_FAILURE)) {
                     /* Retry once again */
-                    authApi.getTokenObjBySession(sessionId, defProject, true,
-                                            function(error, token) {
+                    authApi.getNewTokenObjByToken({'tokenid': tokenId,
+                                                  'tenant': defProject},
+                                                  function(error, token) {
                                                       
                         if ((error) || (null == token)) {
                             redisPub.sendRedirectRequestToMainServer(jobData);
@@ -73,30 +113,31 @@ function apiPut (reqUrl, reqData, jobData, callback, appHeaders, stopRetry)
     var headers = {};
     var authObj;
     var defProject = null;
-    var sessionId = null;
+    var tokenId = null;
     try {
-        headers['X-Auth-Token'] =
-            jobData['taskData']['authObj']['token']['id'];
+        defProject = getDefProjectByJobData(jobData);
+        headers['X-Auth-Token'] = getAuthTokenByJobData(jobData);
+        headers['X_API_ROLE'] =
+            jobData['taskData']['userRoles'][defProject].join(',');
         headers = getHeaders(headers, appHeaders);
-        defProject = jobData['taskData']['authObj']['token']['tenant']['name'];
-        sessionId = jobData['taskData']['authObj']['sessionId'];
     } catch(e) {
         /* We did not have authorized yet */
         headers['X-Auth-Token'] = null;
+        headers['X_API_ROLE'] = null;
         defProject = null;
-        sessionId = null;
     }
     configServer.api.put(reqUrl, function(err, data) {
         if (err) {
             if (stopRetry) {
                 callback(err, data);
             } else {
-                if ((null != defProject) && (null != sessionId) && 
+                if ((null != defProject) && (null != tokenId) &&
                     (err.responseCode ==
                      global.HTTP_STATUS_AUTHORIZATION_FAILURE)) {
                     /* Retry once again */
-                    authApi.getTokenObjBySession(sessionId, defProject, true,
-                                            function(error, token) {
+                    authApi.getNewTokenObjByToken({'tokenid': tokenId,
+                                                  'tenant': defProject},
+                                                  function(error, token) {
 
                         if ((error) || (null == token)) {
                             redisPub.sendRedirectRequestToMainServer(jobData);
@@ -121,30 +162,31 @@ function apiPost (reqUrl, reqData, jobData, callback, appHeaders, stopRetry)
     var headers = {};
     var authObj;
     var defProject = null;
-    var sessionId = null;
+    var tokenId = null;
     try {
-        headers['X-Auth-Token'] =
-            jobData['taskData']['authObj']['token']['id'];
+        defProject = getDefProjectByJobData(jobData);
+        headers['X-Auth-Token'] = getAuthTokenByJobData(jobData);
+        headers['X_API_ROLE'] =
+            jobData['taskData']['userRoles'][defProject].join(',');
         headers = getHeaders(headers, appHeaders);
-        defProject = jobData['taskData']['authObj']['token']['tenant']['name'];
-        sessionId = jobData['taskData']['authObj']['sessionId'];
     } catch(e) {
         /* We did not have authorized yet */
         headers['X-Auth-Token'] = null;
+        headers['X_API_ROLE'] = null;
         defProject = null;
-        sessionId = null;
     }
     configServer.api.post(reqUrl, function(err, data) {
         if (err) {
             if (stopRetry) {
                 callback(err, data);
             } else {
-                if ((null != defProject) && (null != sessionId) && 
+                if ((null != defProject) && (null != tokenId) &&
                     (err.responseCode ==
                      global.HTTP_STATUS_AUTHORIZATION_FAILURE)) {
                     /* Retry once again */
-                    authApi.getTokenObjBySession(sessionId, defProject, true,
-                                            function(error, token) {
+                    authApi.getNewTokenObjByToken({'tokenid': tokenId,
+                                                  'tenant': defProject},
+                                                  function(error, token) {
 
                         if ((error) || (null == token)) {
                             redisPub.sendRedirectRequestToMainServer(jobData);
@@ -168,30 +210,31 @@ function apiDelete (reqUrl, jobData, callback, appHeaders, stopRetry)
     var headers = {};
     var authObj;
     var defProject = null;
-    var sessionId = null;
+    var tokenId = null;
     try {
-        headers['X-Auth-Token'] =
-            jobData['taskData']['authObj']['token']['id'];
+        defProject = getDefProjectByJobData(jobData);
+        headers['X-Auth-Token'] = getAuthTokenByJobData(jobData);
+        headers['X_API_ROLE'] =
+            jobData['taskData']['userRoles'][defProject].join(',');
         headers = getHeaders(headers, appHeaders);
-        defProject = jobData['taskData']['authObj']['token']['tenant']['name'];
-        sessionId = jobData['taskData']['authObj']['sessionId'];
     } catch(e) {
         /* We did not have authorized yet */
         headers['X-Auth-Token'] = null;
+        headers['X_API_ROLE'] = null;
         defProject = null;
-        sessionId = null;
     }
     configServer.api.delete(reqUrl, function(err, data) {
         if (err) {
             if (stopRetry) {
                 callback(err, data);
             } else {
-                if ((null != defProject) && (null != sessionId) && 
+                if ((null != defProject) && (null != tokenId) &&
                     (err.responseCode ==
                      global.HTTP_STATUS_AUTHORIZATION_FAILURE)) {
                     /* Retry once again */
-                    authApi.getTokenObjBySession(sessionId, defProject, true,
-                                            function(error, token) {
+                    authApi.getNewTokenObjByToken({'tokenid': tokenId,
+                                                  'tenant': defProject},
+                                                  function(error, token) {
 
                         if ((error) || (null == token)) {
                             redisPub.sendRedirectRequestToMainServer(jobData);

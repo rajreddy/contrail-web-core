@@ -124,15 +124,15 @@ Handlebars.registerHelper('getHashFromMenuItem',function(menuItem){
     var result = {},params = {},childItems = [];
     if(menuItem['items'] != null && menuItem['items']['item'] != null){
         childItems = menuItem['items']['item'];
-        if(childItems[0]['hash'] != null)
+        if(childItems != null && childItems.length > 0 && childItems[0]['hash'] != null)
             result['p'] = childItems[0]['hash'];
-        if(childItems[0]['queryParams'] != null){
+        if(childItems != null && childItems.length > 0 && childItems[0]['queryParams'] != null){
             $.each(childItems[0]['queryParams'],function(key,value){
                 params[key] = value
             });
             result['q'] = params;
         }
-        return $.param.fragment(location.href,result);
+        return $.param.fragment(location.href,result,2);
     } else {
         if(menuItem['hash'] != null)
             result['p'] = menuItem['hash'];
@@ -142,8 +142,18 @@ Handlebars.registerHelper('getHashFromMenuItem',function(menuItem){
             });
             result['q'] = params;
         }
-        return $.param.fragment(location.href,result)
+        return $.param.fragment(location.href,result,2)
     }
 });
 
+Handlebars.registerHelper('showHidePIDetails', function(type) {
+    return type === 'Physical' ? 'show' : 'hide';
+});
 
+Handlebars.registerHelper('showHideLIDetails', function(type) {
+    return type === 'Logical' ? 'show' : 'hide';
+});
+
+Handlebars.registerHelper('formatVirtualRouterType', function(type) {
+    return formatVirtualRouterType(type);
+});

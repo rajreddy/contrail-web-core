@@ -91,7 +91,32 @@
         <feature>quotasconfig</feature>
         <read-access>member</read-access>
         <write-access>member</write-access>
-    </item>    
+    </item>
+    <item>
+        <feature>securitygroupconfig</feature>
+        <read-access>member</read-access>
+        <write-access>member</write-access>
+    </item>
+    <item>
+        <feature>logicalroutersconfig</feature>
+        <read-access>member</read-access>
+        <write-access>member</write-access>
+    </item>
+    <item>
+        <feature>virtualroutersconfig</feature>
+        <read-access>member</read-access>
+        <write-access>member</write-access>
+    </item> 
+    <item>
+        <feature>physicalroutersconfig</feature>
+        <read-access>member</read-access>
+        <write-access>member</write-access>
+    </item>     
+    <item>
+        <feature>physicalinterfacesconfig</feature>
+        <read-access>member</read-access>
+        <write-access>member</write-access>
+    </item> 
     <item>
         <feature>orchestration</feature>
     </item>
@@ -100,5 +125,8 @@
     </item>
     <item>
         <feature>proxy</feature>
+    </item>
+    <item>
+        <feature>portconfig</feature>
     </item>
 </featureLists>

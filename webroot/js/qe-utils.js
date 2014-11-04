@@ -1073,8 +1073,12 @@ function setColumnValues(url, viewModelKey, viewModels, responseField, ignoreVal
     });
 };
 
-function setStatQueryFromValues(url, viewModelKey , viewModel, queryJSON) {
+function setStatQueryFromValues(url, viewModelKey , viewModel, queryJSON, callback) {
     var validValues, validValueDS = [];
+
+    validValueDS.push({"name":'Custom', "value":'Custom'});
+    viewModel[viewModelKey].push({name:'Custom', value:'Custom'});
+
     $.ajax({
         url: url,
         dataType: "json",
@@ -1084,6 +1088,7 @@ function setStatQueryFromValues(url, viewModelKey , viewModel, queryJSON) {
                 if(validValues[i].name.indexOf("StatTable")!=-1){
                     validValueDS.push({"name":validValues[i].display_name, "value":validValues[i].name});
                     viewModel[viewModelKey].push({name:validValues[i].display_name, value:validValues[i].name});
+                    callback();
                 }
             }
             if(queryJSON != null && typeof queryJSON.table != 'undefined'){
@@ -1827,7 +1832,9 @@ function loadStatResults(options, reqQueryObj, columnDisplay, statQueryGridDispl
                     	if (options.showChartToggle) {
                 			queries.stat.chartViewModel.isFCLoaded(false);
 	                        queries.stat.chartViewModel.options(options);
-	                        populateData4StatChart(options, columnDisplay, statChartGridDisplay);
+	                       if(contrail.checkIfExist(statChartGridDisplay)){
+                               populateData4StatChart(options, columnDisplay, statChartGridDisplay);
+                           }
 	//                                var grid = $("#fs-flow-classes").data("contrailGrid");
 	//                                if(grid != null){
 	//                                    grid.refreshView();
@@ -1875,7 +1882,8 @@ function loadQueryQueue(options) {
     			},
     			customControls: ['<a id="btnDeleteQueryQueue" onclick=deleteQueryCache4Queue("' + options.queueType + '"); title="Delete All Query Queue" class="disabled-link"><i class="icon-trash"></i></a>'],
     			defaultControls: {
-    				refreshable: true
+    				refreshable: true,
+                    searchable: false
     			}
     		},
     		columnHeader: {
@@ -3105,6 +3113,7 @@ function QueryViewModel(queryPrefix, resetFunction, isTGActive) {
     ]);
 
     this.isCustomTRVisible = ko.observable(false);
+    this.isCustomTableVisible = ko.observable(false);
 
     this.reset = resetFunction;
 
@@ -3137,7 +3146,11 @@ function QueryViewModel(queryPrefix, resetFunction, isTGActive) {
 };
 
 function WhereViewModel(queryPrefix, resetFunction) {
-    this.opValues = ko.observableArray([{ name: "=", value: "=" }]);
+    if(queryPrefix == 'stat'){
+        this.opValues = ko.observableArray([{ name: "=", value: "=" }, { name: "Starts with", value: "Starts with" }]);
+    } else {
+        this.opValues = ko.observableArray([{ name: "=", value: "=" }]);
+    }
     this.selectFields = ko.observableArray([]);
     this.whereClauseView = ko.observableArray([]);
     this.whereClauseSubmit = ko.observableArray([]);
