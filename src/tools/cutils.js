@@ -90,6 +90,26 @@ function clone(obj) {
     throw new Error("Unable to copy obj! Its type isnt supported.");
 }
 
+function getID(divid){
+    if(divid === undefined){
+         return -1;
+    }
+    var split = divid.split("_");
+    if(split.length > 1){
+        return(split[1])
+    } else {
+        return -1;
+    }
+}
+function getInnerID(divid){
+    var split = divid.split("_");
+    if(split.length > 3){
+        return(split[3])
+    } else {
+        return -1;
+    }
+}
+
 function doAjaxCall(targetUrl, methodType, postData, successHandler, failureHandler, cacheEnabled, callbackParams, timeOut, hideErrMsg,abortCall,projectUUID) {
     var url = targetUrl, type = methodType, cache = cacheEnabled,
         success = successHandler, failure = failureHandler, data = postData,
@@ -1199,6 +1219,33 @@ function policyRuleFormat(text) {
     return '<span class="rule-format">' + text  + '</span>';
 }
 
+function formatVirtualRouterType(type) {
+    var formattedType = '';
+    if(type === '-') {
+         formattedType = type;
+    } else if(typeof type === 'object') {
+        for(var i = 0; i < type.length; i++) {
+            var actText = '';
+            switch(type[i]) {
+                case 'embedded' :
+                    actText = 'Embedded';
+                    break;
+                case 'tor-agent' :
+                    actText = 'TOR Agent';
+                    break; 
+                case 'tor-service-node' :
+                    actText = 'TOR Service Node';
+                    break;                 
+            }                
+            if(formattedType === '') {
+                formattedType = actText
+            } else {
+                formattedType += ' , ' + actText;
+            }
+        }
+    }
+    return formattedType;         
+}
 
 cutils.getCookie = getCookie;       
 cutils.setCookie = setCookie;
@@ -1208,6 +1255,8 @@ cutils.isNumber = isNumber;
 cutils.isString = isString;
 cutils.pad = pad;
 cutils.doAjaxCall = doAjaxCall;
+cutils.getID = getID;
+cutils.getInnerID = getInnerID;
 cutils.callAjax = callAjax;
 cutils.formatPolicyRule = formatPolicyRule;
 cutils.policy_net_display = policy_net_display;
@@ -1261,3 +1310,4 @@ cutils.isValidIP = isValidIP;
 cutils.isIPv4 = isIPv4;
 cutils.isIPv6 = isIPv6;
 cutils.isIPBoundToRange = isIPBoundToRange;
+cutils.formatVirtualRouterType = formatVirtualRouterType;

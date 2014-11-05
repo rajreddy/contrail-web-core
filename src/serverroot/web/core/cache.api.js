@@ -6,7 +6,7 @@ var redisSub = require('./redisSub')
 	, global = require('../../common/global')
 	, redis = require("redis")
 	, longPoll = require('./longPolling.api')
-	, config = require('../../../../config/config.global.js')
+	, config = process.mainModule.exports.config
 	, commonUtils = require('../../utils/common.utils')
 	, logutils = require('../../utils/log.utils')
 	, util = require('util')
@@ -132,6 +132,12 @@ function queueDataFromCacheOrSendRequest (req, res, jobType, jobName,
 	var reqUrl = reqJSON.data.url;
 	var hash = reqJSON.jobName;
 	var channel = redisSub.createChannelByHashURL(hash, reqUrl);
+    if ((null == sendToJobServerAlways) || (false == sendToJobServerAlways)) {
+        sendReqToJobServer(req, res, reqData, channel, hash,
+                           sendToJobServerAlways, postCallback);
+        return;
+    }
+
     cacheApi.redisClient.zrange('q:jobs:' + jobName + ':' + 'active' , 0,
                                global.MAX_INT_VALUE,
                                function(err, data) {
@@ -209,7 +215,6 @@ function sendReqToJobServer (req, res, reqData, channel, hash,
                 handleJSONResponse(err, req, res, value);
                 saveCtx = false;
             }
-                
 			createDataAndSendToJobServer(global.STR_JOB_TYPE_CACHE, hash,
 			                             reqData, req, res, saveCtx,
                                          postCallback);
@@ -323,6 +328,12 @@ function createReqData (req, type, jobName, reqUrl, runCount, defCallback,
 			pubChannel: pubChannel,
 			saveChannelKey: saveChannelKey,
 			reqBy: reqBy,
+			userRoles: req.session.userRoles,
+            tokenObjs: req.session.tokenObjs,
+            cookies: {
+                domain: req.cookies.domain,
+                project: req.cookies.project,
+            },
 			appData: appData
 		}
 	};

@@ -7,7 +7,7 @@ var commonUtils = module.exports,
     http = require('https'),
     messages = require('../common/messages'),
     util = require('util'),
-    config = require('../../../config/config.global.js'),
+    config = process.mainModule.exports.config,
     fs = require('fs'),
     path = require('path'),
     global = require('../common/global'),
@@ -1327,6 +1327,48 @@ function getWebServerInfo (req, res, appData)
     commonUtils.handleJSONResponse(null, res, serverObj);
 }
 
+function getUserRoleListPerTenant (req, res, callback)
+{
+    var userRolesObj = {};
+    var project = req.param('project');
+    try {
+        var tokenObjs = req.session.tokenObjs;
+    } catch(e) {
+        redirectToLogout(req, res);
+        return;
+    }
+    var rolesPerTenant = {};
+    if (null == tokenObjs) {
+        redirectToLogout(req, res);
+        return;
+    }
+    if (null != project) {
+        try {
+            var roles = tokenObjs[project]['user']['roles'];
+        } catch(e) {
+            logutils.logger.error("Roles not found..Redirecting to login page");
+            redirectToLogout(req, res);
+            return;
+        }
+        var uiRoles = authApi.getUIRolesByExtRoles(roles);
+        userRolesObj[project] = uiRoles;
+        commonUtils.handleJSONResponse(null, res, userRolesObj);
+        return;
+    }
+    for (var key in tokenObjs) {
+        try {
+            var roles = tokenObjs[key]['user']['roles'];
+        } catch(e) {
+            logutils.logger.error("Roles not found for project " +
+                                  key + " ..Redirecting to login page");
+            redirectToLogout(req, res);
+            return;
+        }
+        rolesPerTenant[key] = authApi.getUIRolesByExtRoles(roles);
+    }
+    handleJSONResponse(null, res, rolesPerTenant);
+}
+
 function mergeAllPackageList (serverType)
 {
     var pkgList = [];
@@ -1342,61 +1384,6 @@ function mergeAllPackageList (serverType)
         }
     }
     return pkgList;
-}
-
-/* Function: compareAndMergeDefaultConfig
-   This function is used to compare and merge missing configuration from
-   default.config.global.js with config file
- */
-function compareAndMergeDefaultConfig ()
-{
-    var confFile = __dirname + '/../../../config/config.global.js';//'/etc/contrail/config.global.js';
-    var defConfFile = __dirname + '/../../../config/default.config.global.js';
-    return compareAndMergeFiles(confFile, defConfFile);
-}
-
-/* Function: mergeObjects
-    This function is used to merge default config with actual config, so any
-    config is missed in actual config, that is added from default config.
- */
-function mergeObjects (defaults, configs)
-{
-    if (null == configs) {
-        return defaults;
-    }
-    if (null == defaults) {
-        return configs;
-    }
-    Object.keys(defaults).forEach(function(keyDefault) {
-        if (typeof configs[keyDefault] == "undefined") {
-            configs[keyDefault] = defaults[keyDefault];
-        } else if (isObject(defaults[keyDefault]) && isObject(configs[keyDefault])) {
-            mergeObjects(defaults[keyDefault], configs[keyDefault]);
-        }
-    });
-
-    function isObject(object) {
-        return Object.prototype.toString.call(object) === '[object Object]';
-    }
-
-    return configs;
-}
-
-/* Function: compareAndMergeFiles
-   This function is used to mege two files line by line comparing the left
-   porton of splitter of fileToCmp with fileWithCmp.
-
-   args: 
-    fileToCmp: The file to which comparison is done, finally the extra string in
-               fileWithCmp gets copied in fileToCmp.
-    fileWithCmp: The file with with comparison is done
- */
-function compareAndMergeFiles (fileToCmp, fileWithCmp)
-{
-    var oldConfig = require(fileToCmp);
-    var defConfig = require(fileWithCmp);
-    var config = mergeObjects(defConfig, oldConfig);
-    return config;
 }
 
 function getAllJsons (menuDir, callback)
@@ -1750,6 +1737,19 @@ function ifNull(value, defValue) {
         return value;
 }
 
+function getWebConfigValueByName (req, res, appData)
+{
+    var type = req.param('type'),
+        variable = req.param('variable'),
+        configObj = {}, value;
+    if(type != null && variable != null) {
+        value = ((null != config[type]) && (null != config[type][variable])) ?
+            config[type][variable] : null;
+        configObj[variable] = value;
+    }
+    commonUtils.handleJSONResponse(null, res, configObj);
+}
+
 exports.createJSONBySandeshResponseArr = createJSONBySandeshResponseArr;
 exports.createJSONBySandeshResponse = createJSONBySandeshResponse;
 exports.createJSONByUVEResponse = createJSONByUVEResponse;
@@ -1793,9 +1793,10 @@ exports.changeFileContentAndSend = changeFileContentAndSend;
 exports.getOrchestrationPluginModel = getOrchestrationPluginModel;
 exports.getWebServerInfo = getWebServerInfo;
 exports.mergeAllPackageList = mergeAllPackageList;
-exports.compareAndMergeDefaultConfig = compareAndMergeDefaultConfig;
 exports.mergeAllMenuXMLFiles = mergeAllMenuXMLFiles;
 exports.getPkgPathByPkgName = getPkgPathByPkgName;
 exports.convertUUIDToString = convertUUIDToString;
 exports.ifNull = ifNull;
+exports.getUserRoleListPerTenant = getUserRoleListPerTenant;
+exports.getWebConfigValueByName = getWebConfigValueByName;
 

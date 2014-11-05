@@ -683,6 +683,10 @@ filter: alpha(opacity=40);
 	background-color: #fff;
 }
 
+/* Font Awesome Icons */
+
+.icon-muted{color: #777;}
+
 /* NVD3 Styles */
 
 /* aligning heights of all input types */
@@ -1503,8 +1507,8 @@ input.datetimepicker{
 }
 /* End - Jquery UI Tabs */
 /* a Links */
-a.disabled-link, a.disabled-link:hover{
-	color: #ccc;
+a.disabled-link, a.disabled-link:hover, i.disabled-link, i.disabled-link:hover{
+	color: #ccc !important;
 	cursor: initial !important;
 }
 a.disabled-link i {
@@ -1902,6 +1906,10 @@ color: #b94a48;
     background:#eee;
     height: 282px;
 }
+.image-Security:before {
+  content : url(../img/policy.png);
+  vertical-align : middle;
+}
 
 /* Group Detail Container Styles */
 .group-detail-container h6 {
@@ -2102,7 +2110,8 @@ color: #b94a48;
 .ui-multiselect-checkboxes { position:relative /* fixes bug in IE6/7 */; overflow-y:scroll }
 .ui-multiselect-checkboxes label { cursor:default; display:block; border:1px solid transparent; padding:3px 3px 3px 10px }
 .ui-multiselect-checkboxes label input { position:relative !important; top:1px }
-.ui-multiselect-checkboxes input.ace-input[type=checkbox] + .ace-lbl::before, input.ace-input[type=radio] + .ace-lbl::before {
+.ui-multiselect-checkboxes input.ace-input[type=checkbox] + .ace-lbl::before, input.ace-input[type=radio] + .ace-lbl::before,
+.ui-multiselect-checkboxes input.ace-input-tristate[type=checkbox] + .ace-lbl::before {
 	margin-left: -20px;
 	margin-right: 8px;
 }

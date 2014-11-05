@@ -29,7 +29,7 @@ var TENANT_API_URL = "/api/tenant/get-data";
 var SANDESH_DATA_URL = "/api/admin/monitor/infrastructure/get-sandesh-data";
 var INDENT_RIGHT = "&nbsp;&nbsp;&nbsp;&nbsp;";
 var INST_PAGINATION_CNT = 50;
-var NETWORKS_PAGINATION_CNT = 5;
+var NETWORKS_PAGINATION_CNT = 25;
 var sevLevels = {
     ERROR   : 0, //Red
     WARNING : 1, //Orange
@@ -451,11 +451,11 @@ var defColors = ['#1c638d', '#4DA3D5'];
                                     e.detailRow.find('.row-fluid.advancedDetails').html('<div><pre style="background-color:white">' + syntaxHighlight(response) + '</pre></div>');
                                     //DataItem consists of row data,passing it as a parameter to the parsefunction
                                     e.detailRow.find('.row-fluid.basicDetails').html(detailTemplate(data['detailParseFn'](response,dataItem)));
-                                    $(grid).data('contrailGrid').adjustDetailRowHeight(dataItem['id']);
+                                    $(grid).data('contrailGrid').adjustDetailRowHeight(dataItem['cgrid']);
                                 } else if(!isEmptyObject(response)) {
                                     e.detailRow.find('.row-fluid.advancedDetails').html('<div><pre style="background-color:white">' + syntaxHighlight(response) + '</pre></div>');
                                     e.detailRow.find('.row-fluid.basicDetails').html(detailTemplate(data['detailParseFn'](response,dataItem)));
-                                    $(grid).data('contrailGrid').adjustDetailRowHeight(dataItem['id']);
+                                    $(grid).data('contrailGrid').adjustDetailRowHeight(dataItem['cgrid']);
                                 } else {
                                     $(e.detailRow).html('<p class="error"><i class="icon-warning"></i>Error in fetching the details</p>');
                                 }
@@ -872,14 +872,16 @@ function MenuHandler() {
 
     this.loadMenu = function () {
         $.get('/menu.xml?built_at=' + built_at, function (xml) {
-            menuObj = $.xml2json(xml);
-            webServerDefObj.always(function(){
-                processXMLJSON(menuObj);
-                var menuShortcuts = contrail.getTemplate4Id('menu-shortcuts')(menuHandler.filterMenuItems(menuObj['items']['item'],'menushortcut'));
-                $("#sidebar-shortcuts").html(menuShortcuts);
-                menuObj['items']['item'] = menuHandler.filterMenuItems(menuObj['items']['item']);
-                menuDefferedObj.resolve();
-            });
+            $.get('/api/admin/webconfig/features/disabled?built_at=' + built_at, function(disabledFeatures) {
+                menuObj = $.xml2json(xml);
+                webServerDefObj.always(function(){
+                    processXMLJSON(menuObj, disabledFeatures);
+                    var menuShortcuts = contrail.getTemplate4Id('menu-shortcuts')(menuHandler.filterMenuItems(menuObj['items']['item'],'menushortcut'));
+                    $("#sidebar-shortcuts").html(menuShortcuts);
+                    ['items']['item'] = menuHandler.filterMenuItems(menuObj['items']['item']);
+                    menuDefferedObj.resolve();
+                });            
+            })
         });
         //Add an event listener for clicking on menu items
         $('#menu').on('click','ul > li > a',function(e) {
@@ -1095,19 +1097,28 @@ function MenuHandler() {
      * post-processing of menu XML JSON
      * JSON expectes item to be an array,but xml2json make item as an object if there is only one instance
      */
-    function processXMLJSON(json) {
+    function processXMLJSON(json, disabledFeatures) {
         if((json['resources'] != null) && json['resources']['resource'] != null) {
             if(!(json['resources']['resource'] instanceof Array))
                 json['resources']['resource'] = [json['resources']['resource']];
         }
         if ((json['items'] != null) && (json['items']['item'] != null)) {
             if (json['items']['item'] instanceof Array) {
-                for (var i = 0; i < json['items']['item'].length; i++) {
-                    processXMLJSON(json['items']['item'][i]);
-                    add2SiteMap(json['items']['item'][i]);
-                }
+                    var currItem = json['items']['item'];
+                    for (var i = (currItem.length - 1); i > -1; i--) {
+                        //remove diabled features from the menu obeject
+                        if(currItem[i]['hash'] != undefined 
+                                && disabledFeatures.disabled != null && disabledFeatures.disabled.indexOf(currItem[i]['hash']) !== -1) {
+                            currItem.splice(i, 1);
+                        } else {
+                            if(currItem[i] != undefined) {
+                                processXMLJSON(currItem[i], disabledFeatures);
+                                add2SiteMap(currItem[i]);
+                            }
+                        }
+                    }
             } else {
-                processXMLJSON(json['items']['item']);
+                processXMLJSON(json['items']['item'], disabledFeatures);
                 add2SiteMap(json['items']['item']);
                 json['items']['item'] = [json['items']['item']];
             }
@@ -1931,17 +1942,17 @@ function loadAlertsContent(deferredObj){
             columnHeader: {
                 columns:[ 
                     {
-                        field:'nName',
+                        field:'name',
                         name:'Node',
                         minWidth:150,
                         formatter: function(r,c,v,cd,dc){
-                            if(typeof(dc['sevLevel']) != "undefined" && typeof(dc['nName']) != "undefined")
-                                return "<span>"+statusTemplate({sevLevel:dc['sevLevel'],sevLevels:sevLevels})+dc['nName']+"</span>";
+                            if(typeof(dc['sevLevel']) != "undefined" && typeof(dc['name']) != "undefined")
+                                return "<span>"+statusTemplate({sevLevel:dc['sevLevel'],sevLevels:sevLevels})+dc['name']+"</span>";
                             else
-                                return dc['nName'];
+                                return dc['name'];
                         }
                     },{
-                        field:'pName',
+                        field:'type',
                         name:'Process',
                         minWidth:100
                     },{
@@ -2147,6 +2158,7 @@ function ManageDataSource() {
             dsObj['ongoing'] = false;
             dsObj['lastUpdated'] = new Date().getTime();
             dsObj['error'] = null;
+            dsObj['clean'] = true;
             manageDataSource.setLastupdatedTime(dsObj,{status:'done'});
         });
         return dsObj;
